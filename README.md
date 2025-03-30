@@ -3,6 +3,6 @@
 
 ## Links
 
-Github Repo: 
+Github Repo: https://github.com/DonovanSullivan/Food-Flow
 
-Github Pages: 
+Github Pages: https://donovansullivan.github.io/Food-Flow/
