@@ -161,7 +161,7 @@
                 `;
                 document.getElementById("restaurant-list").appendChild(div);
 
-                // Add restaurant markers to the map
+
                 L.marker([restaurant.lat, restaurant.lng]).addTo(map)
                     .bindPopup(`${restaurant.name} - ${restaurant.distance.toFixed(1)} mi`);
             });
@@ -193,30 +193,26 @@
         }
 
         function placeOrder() {
-    // Get the delivery location and details
+
     const deliveryLocation = document.getElementById("delivery-location").value;
     const deliveryDetails = document.getElementById("delivery-details").value;
     const selectedRestaurant = document.getElementById("restaurant-info").querySelector("h4").innerText; // Get the restaurant name
 
-    // Check if the delivery location is filled out
+
     if (!deliveryLocation) {
         alert('Delivery Location is required!');
         return;
     }
 
     if (selectedMeals.length > 0) {
-        // Create a customer order
+
         const order = {
-            restaurant: selectedRestaurant,  // Store the restaurant name
+            restaurant: selectedRestaurant,
             meals: selectedMeals,
             location: deliveryLocation,
             details: deliveryDetails
         };
-
-        // Add the order to the customer orders database
         customerOrders.push(order);
-
-        // Add the same order to the driver's database
         driverOrders.push(order);
 
         alert(`Order placed for: ${selectedMeals.join(', ')}\nDelivery Location: ${deliveryLocation}\nDelivery Details: ${deliveryDetails}`);
@@ -229,7 +225,7 @@
 
 
 function updateDriverPanel() {
-    const driverOrdersDiv = document.getElementById("restaurant-list"); // Use this div for driver orders in the item list
+    const driverOrdersDiv = document.getElementById("restaurant-list");
     driverOrdersDiv.innerHTML = driverOrders.map((order, index) => {
         return `
             <div class="item" onclick="selectDriverOrder(${index})">
@@ -240,17 +236,16 @@ function updateDriverPanel() {
 }
 
 function selectDriverOrder(index) {
-    // Mark the selected order and update the panel
+
     selectedDriverOrder = driverOrders[index];
 
-    // Display the selected order's detailed information
     const infoPanel = document.getElementById("driver-order-info");
     infoPanel.innerHTML = `
-        <h4>Order ${index + 1} Details:</h4>
-        <div><strong>Restaurant:</strong> ${selectedDriverOrder.restaurant}</div>  <!-- Display restaurant name -->
-        <div><strong>Meals:</strong> ${selectedDriverOrder.meals.join(", ")}</div>
-        <div><strong>Delivery Location:</strong> ${selectedDriverOrder.location}</div>
-        <div><strong>Additional Details:</strong> ${selectedDriverOrder.details || "No additional details"}</div>
+        <h4 style="font-family: Montserrat">Order ${index + 1} Details:</h4>
+        <div style="font-family: Montserrat"><strong>Restaurant:</strong> ${selectedDriverOrder.restaurant}</div>  <!-- Display restaurant name -->
+        <div style="font-family: Montserrat"><strong>Meals:</strong> ${selectedDriverOrder.meals.join(", ")}</div>
+        <div style="font-family: Montserrat"><strong>Delivery Location:</strong> ${selectedDriverOrder.location}</div>
+        <div style="font-family: Montserrat"><strong>Additional Details:</strong> ${selectedDriverOrder.details || "No additional details"}</div>
     `;
 }
 
