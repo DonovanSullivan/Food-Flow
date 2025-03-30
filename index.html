@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geolocation and Scrollbar</title>
+    <link rel="stylesheet" href="stylesheet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+</head>
+<body>
+    <div class="sidebar">
+        <div class="button-group">
+            <button class="toggle-button selected" id="customer-button" onclick="toggleRole('customer')">Customer</button>
+            <button class="toggle-button" id="driver-button" onclick="toggleRole('driver')">Driver</button>
+        </div>
+        <div class="item-list-header">Item List</div>
+        <div id="restaurant-list"></div>
+    </div>
+    <div class="main-content">
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+        <div class="order-panel" id="order-panel">
+            <div id="restaurant-info">Select a restaurant to see meals.</div>
+            <!-- New delivery fields -->
+            <div class="order-input">
+                <label for="delivery-location">Delivery Location <span class="mandatory">*</span></label>
+                <input type="text" id="delivery-location" required />
+            </div>
+            <div class="order-input">
+                <label for="delivery-details">Delivery Details (Optional)</label>
+                <input type="text" id="delivery-details" />
+            </div>
+            <button class="order-button" onclick="placeOrder()">Order</button>
+        </div>
+    </div>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        let map;
+        let selectedMeals = [];
+
+        function initMap() {
+            var defaultLat = 40.7982;  
+            var defaultLng = -77.8599;
+            map = L.map('map').setView([defaultLat, defaultLng], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            
+            L.marker([defaultLat, defaultLng]).addTo(map)
+                .bindPopup("Default Location: Happy Valley, PA").openPopup();
+            
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function (position) {
+                    var userLat = position.coords.latitude;
+                    var userLng = position.coords.longitude;
+                    map.setView([userLat, userLng], 13);
+                    
+                    L.marker([userLat, userLng]).addTo(map)
+                        .bindPopup("You are here").openPopup();
+                    fetchNearbyRestaurants(userLat, userLng);
+                }, function () {
+                    fetchNearbyRestaurants(defaultLat, defaultLng);
+                });
+            } else {
+                fetchNearbyRestaurants(defaultLat, defaultLng);
+            }
+        }
+
+        function fetchNearbyRestaurants(lat, lng) {
+            document.getElementById("restaurant-list").innerHTML = "";
+            let restaurants = [
+                { name: "Example Restaurant 1", meals: ["Burger", "Salad", "Pasta", "Soup"], distance: "1.2 mi" },
+                { name: "Example Restaurant 2", meals: ["Pizza", "Steak", "Tacos", "Fries"], distance: "2.5 mi" },
+                { name: "Example Restaurant 3", meals: ["Sushi", "Ramen", "Tempura", "Miso Soup"], distance: "0.8 mi" }
+            ];
+            
+            restaurants.forEach(restaurant => {
+                let div = document.createElement("div");
+                div.className = "item";
+                div.onclick = () => showRestaurantInfo(restaurant);
+                div.innerHTML = `
+                    <span class="restaurant-name">${restaurant.name}</span>
+                    <span class="distance">${restaurant.distance}</span>
+                    <div class="meals-list">Meals: ${restaurant.meals.join(", ")}</div>
+                `;
+                document.getElementById("restaurant-list").appendChild(div);
+            });
+        }
+
+        function showRestaurantInfo(restaurant) {
+            const infoPanel = document.getElementById("restaurant-info");
+            infoPanel.innerHTML = `
+                <h4>${restaurant.name}</h4>
+                <div>Meals available:</div>
+                <ul>
+                    ${restaurant.meals.map(meal => `<li class="meal-item" onclick="selectMeal('${meal}')">${meal}</li>`).join('')}
+                </ul>
+            `;
+        }
+
+        function selectMeal(meal) {
+            if (selectedMeals.includes(meal)) {
+                selectedMeals = selectedMeals.filter(selectedMeal => selectedMeal !== meal);
+            } else {
+                selectedMeals.push(meal);
+            }
+            const mealItems = document.querySelectorAll('.meal-item');
+            mealItems.forEach(item => {
+                if (item.innerText === meal) {
+                    item.classList.toggle('selected');
+                }
+            });
+        }
+
+        function placeOrder() {
+            // Get the delivery location and details
+            const deliveryLocation = document.getElementById("delivery-location").value;
+            const deliveryDetails = document.getElementById("delivery-details").value;
+
+            // Check if the delivery location is filled out
+            if (!deliveryLocation) {
+                alert('Delivery Location is required!');
+                return;
+            }
+
+            if (selectedMeals.length > 0) {
+                alert(`Order placed for: ${selectedMeals.join(', ')}\nDelivery Location: ${deliveryLocation}\nDelivery Details: ${deliveryDetails}`);
+            } else {
+                alert('No meals selected!');
+            }
+        }
+
+        function toggleRole(role) {
+            document.getElementById("customer-button").classList.toggle("selected", role === "customer");
+            document.getElementById("driver-button").classList.toggle("selected", role === "driver");
+        }
+
+        window.onload = initMap;
+    </script>
+</body>
+</html>
