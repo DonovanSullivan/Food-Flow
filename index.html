@@ -6,6 +6,10 @@
     <title>Geolocation and Scrollbar</title>
     <link rel="stylesheet" href="stylesheet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="sidebar">
@@ -21,7 +25,7 @@
             <div id="map"></div>
         </div>
         <div class="order-panel" id="order-panel">
-            <div id="restaurant-info">Select a restaurant to see meals.</div>
+            <div id="restaurant-info" style="font-family: Montserrat">Select a restaurant to see available meal(s).</div>
             <!-- New delivery fields -->
             <div class="order-input">
                 <label for="delivery-location">Delivery Location <span class="mandatory">*</span></label>
@@ -33,15 +37,26 @@
             </div>
             <button class="order-button" onclick="placeOrder()">Order</button>
         </div>
+        <div class="driver-panel" id="driver-panel" style="display: none;">
+            <h3 style="font-family: Montserrat;">Driver Orders</h3>
+            <div id="driver-orders"></div>
+        </div>
     </div>
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
         let map;
         let selectedMeals = [];
+        let userLocation = null;  // Global variable to store user's location
+        
+        // Simulated Database (in-memory)
+        let customerOrders = [];
+        let driverOrders = [];
+        let selectedDriverOrder = null;  // Track the selected order for the driver
 
         function initMap() {
-            var defaultLat = 40.7982;  
-            var defaultLng = -77.8599;
+            const defaultLat = 40.7982;
+            const defaultLng = -77.8599;
+
             map = L.map('map').setView([defaultLat, defaultLng], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
@@ -52,39 +67,99 @@
             
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(function (position) {
-                    var userLat = position.coords.latitude;
-                    var userLng = position.coords.longitude;
+                    const userLat = position.coords.latitude;
+                    const userLng = position.coords.longitude;
+                    userLocation = { lat: userLat, lng: userLng }; // Store user's location
+                    
                     map.setView([userLat, userLng], 13);
                     
                     L.marker([userLat, userLng]).addTo(map)
-                        .bindPopup("You are here").openPopup();
-                    fetchNearbyRestaurants(userLat, userLng);
+                        .bindPopup("Your Location").openPopup();
+                    
+                    // Fetch nearby restaurants for customer if necessary
+                    if (document.getElementById("customer-button").classList.contains("selected")) {
+                        fetchNearbyRestaurants(userLat, userLng);  // Fetch restaurants for the customer
+                    }
                 }, function () {
-                    fetchNearbyRestaurants(defaultLat, defaultLng);
+                    userLocation = { lat: defaultLat, lng: defaultLng };
+                    fetchNearbyRestaurants(defaultLat, defaultLng);  // Fetch restaurants for default location
                 });
             } else {
-                fetchNearbyRestaurants(defaultLat, defaultLng);
+                userLocation = { lat: defaultLat, lng: defaultLng };
+                fetchNearbyRestaurants(defaultLat, defaultLng);  // Fetch restaurants for default location
+            }
+        }
+
+        function toggleRole(role) {
+            if (role === 'customer') {
+                document.getElementById("customer-button").classList.add("selected");
+                document.getElementById("driver-button").classList.remove("selected");
+                document.getElementById("order-panel").style.display = "block";
+                document.getElementById("driver-panel").style.display = "none";
+                document.getElementById("restaurant-list").style.display = "block"; // Show restaurant list for customer
+
+                // Clear previous content in the restaurant list
+                document.getElementById("restaurant-list").innerHTML = '';
+
+                // Use the stored user location (if available) to fetch restaurants
+                if (userLocation) {
+                    fetchNearbyRestaurants(userLocation.lat, userLocation.lng);
+                } else {
+                    // Use a default location if the user's location is not available
+                    fetchNearbyRestaurants(40.7982, -77.8599);
+                }
+            } else if (role === 'driver') {
+                document.getElementById("driver-button").classList.add("selected");
+                document.getElementById("customer-button").classList.remove("selected");
+                document.getElementById("order-panel").style.display = "none";
+                document.getElementById("driver-panel").style.display = "block"; // Show the driver panel content
+
+                // Display driver orders in the item list
+                document.getElementById("restaurant-list").style.display = "block";
+                updateDriverPanel(); // Show the orders in the item list for the driver
             }
         }
 
         function fetchNearbyRestaurants(lat, lng) {
+            // Simulate fetching nearby restaurants (as an example)
             document.getElementById("restaurant-list").innerHTML = "";
-            let restaurants = [
-                { name: "Example Restaurant 1", meals: ["Burger", "Salad", "Pasta", "Soup"], distance: "1.2 mi" },
-                { name: "Example Restaurant 2", meals: ["Pizza", "Steak", "Tacos", "Fries"], distance: "2.5 mi" },
-                { name: "Example Restaurant 3", meals: ["Sushi", "Ramen", "Tempura", "Miso Soup"], distance: "0.8 mi" }
+            let allRestaurants = [
+                { name: "Example Restaurant 1", lat: 40.7992, lng: -77.8600, meals: ["Burger", "Salad", "Pasta", "Soup"], distance: 0 },
+                { name: "Example Restaurant 2", lat: 40.8010, lng: -77.8585, meals: ["Pizza", "Steak", "Tacos", "Fries"], distance: 0 },
+                { name: "Example Restaurant 3", lat: 40.7950, lng: -77.8620, meals: ["Sushi", "Ramen", "Tempura", "Miso Soup"], distance: 0 },
+                { name: "Far Away Restaurant", lat: 40.7850, lng: -77.8800, meals: ["Sandwich", "Salad"], distance: 0 } // This one is >1 mile
             ];
-            
-            restaurants.forEach(restaurant => {
+
+            function getDistance(lat1, lon1, lat2, lon2) {
+                const R = 3958.8; // Radius of Earth in miles
+                const dLat = (lat2 - lat1) * (Math.PI / 180);
+                const dLon = (lon2 - lon1) * (Math.PI / 180);
+                const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                          Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+                          Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                return R * c;
+            }
+
+            let nearbyRestaurants = allRestaurants.filter(restaurant => {
+                restaurant.distance = getDistance(lat, lng, restaurant.lat, restaurant.lng);
+                return restaurant.distance <= 1;
+            });
+
+            nearbyRestaurants.forEach(restaurant => {
                 let div = document.createElement("div");
                 div.className = "item";
                 div.onclick = () => showRestaurantInfo(restaurant);
                 div.innerHTML = `
                     <span class="restaurant-name">${restaurant.name}</span>
-                    <span class="distance">${restaurant.distance}</span>
+                    <span class="distance">${restaurant.distance.toFixed(1)} mi</span>
                     <div class="meals-list">Meals: ${restaurant.meals.join(", ")}</div>
                 `;
                 document.getElementById("restaurant-list").appendChild(div);
+
+                // Add restaurant markers to the map
+                L.marker([restaurant.lat, restaurant.lng]).addTo(map)
+                    .bindPopup(`${restaurant.name} - ${restaurant.distance.toFixed(1)} mi`);
             });
         }
 
@@ -92,7 +167,7 @@
             const infoPanel = document.getElementById("restaurant-info");
             infoPanel.innerHTML = `
                 <h4>${restaurant.name}</h4>
-                <div>Meals available:</div>
+                <div>Available Meal(s):</div>
                 <ul>
                     ${restaurant.meals.map(meal => `<li class="meal-item" onclick="selectMeal('${meal}')">${meal}</li>`).join('')}
                 </ul>
@@ -114,26 +189,69 @@
         }
 
         function placeOrder() {
-            // Get the delivery location and details
-            const deliveryLocation = document.getElementById("delivery-location").value;
-            const deliveryDetails = document.getElementById("delivery-details").value;
+    const deliveryLocation = document.getElementById("delivery-location").value;
+    const deliveryDetails = document.getElementById("delivery-details").value;
 
-            // Check if the delivery location is filled out
-            if (!deliveryLocation) {
-                alert('Delivery Location is required!');
-                return;
-            }
+    if (!deliveryLocation) {
+        alert('Delivery Location is required!');
+        return;
+    }
 
-            if (selectedMeals.length > 0) {
-                alert(`Order placed for: ${selectedMeals.join(', ')}\nDelivery Location: ${deliveryLocation}\nDelivery Details: ${deliveryDetails}`);
-            } else {
-                alert('No meals selected!');
-            }
+    if (selectedMeals.length > 0) {
+        const order = {
+            meals: selectedMeals,
+            location: deliveryLocation,
+            details: deliveryDetails
+        };
+
+        customerOrders.push(order);
+        driverOrders.push(order);
+
+        alert(`Order placed for: ${selectedMeals.join(', ')}\nDelivery Location: ${deliveryLocation}\nDelivery Details: ${deliveryDetails}`);
+
+        // Reset the selected meals after the order
+        selectedMeals = [];
+        const mealItems = document.querySelectorAll('.meal-item');
+        mealItems.forEach(item => {
+            item.classList.remove('selected');  // Remove the 'selected' class from each item
+        });
+
+        // Clear the input fields
+        document.getElementById("delivery-location").value = '';
+        document.getElementById("delivery-details").value = '';
+
+        // Unselect the buttons
+        const customerButton = document.getElementById("customer-button");
+        const driverButton = document.getElementById("driver-button");
+
+        customerButton.classList.remove("selected");
+        driverButton.classList.remove("selected");
+
+        // Optionally, reset the view to the customer role
+        toggleRole('customer');
+    } else {
+        alert('No meals selected!');
+    }
+}
+
+
+        function updateDriverPanel() {
+            const driverOrdersDiv = document.getElementById("restaurant-list");
+            driverOrdersDiv.innerHTML = driverOrders.map((order, index) => {
+                return `
+                    <div class="item">
+                        <button class="driver-order-button" onclick="selectDriverOrder(${index})">
+                            Order ${index + 1}: ${order.meals.join(", ")}
+                        </button>
+                    </div>
+                `;
+            }).join('');
         }
 
-        function toggleRole(role) {
-            document.getElementById("customer-button").classList.toggle("selected", role === "customer");
-            document.getElementById("driver-button").classList.toggle("selected", role === "driver");
+        function selectDriverOrder(index) {
+            selectedDriverOrder = driverOrders[index];
+            updateDriverPanel();
+            alert(`Order selected! You can now deliver: ${selectedDriverOrder.meals.join(", ")}`);
         }
 
         window.onload = initMap;
