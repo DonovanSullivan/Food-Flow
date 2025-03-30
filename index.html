@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Geolocation and Scrollbar</title>
+    <link rel="icon" href="Food_Flow2.png" type="image/x-icon">
     <link rel="stylesheet" href="stylesheet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,7 +27,6 @@
         </div>
         <div class="order-panel" id="order-panel">
             <div id="restaurant-info" style="font-family: Montserrat">Select a restaurant to see available meal(s).</div>
-            <!-- New delivery fields -->
             <div class="order-input">
                 <label for="delivery-location">Delivery Location <span class="mandatory">*</span></label>
                 <input type="text" id="delivery-location" required />
@@ -37,9 +37,13 @@
             </div>
             <button class="order-button" onclick="placeOrder()">Order</button>
         </div>
-        <div class="driver-panel" id="driver-panel" style="display: none;">
+        <div class="driver-panel" id="driver-panel">
             <h3 style="font-family: Montserrat;">Driver Orders</h3>
-            <div id="driver-orders"></div>
+            <div id="restaurant-list"></div>
+        
+            <div id="driver-order-info" style="margin-top: 20px; padding: 10px; background-color: #f0f0f0;">
+                <h4>Select an order to view details</h4>
+            </div>
         </div>
     </div>
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
@@ -189,70 +193,67 @@
         }
 
         function placeOrder() {
+    // Get the delivery location and details
     const deliveryLocation = document.getElementById("delivery-location").value;
     const deliveryDetails = document.getElementById("delivery-details").value;
+    const selectedRestaurant = document.getElementById("restaurant-info").querySelector("h4").innerText; // Get the restaurant name
 
+    // Check if the delivery location is filled out
     if (!deliveryLocation) {
         alert('Delivery Location is required!');
         return;
     }
 
     if (selectedMeals.length > 0) {
+        // Create a customer order
         const order = {
+            restaurant: selectedRestaurant,  // Store the restaurant name
             meals: selectedMeals,
             location: deliveryLocation,
             details: deliveryDetails
         };
 
+        // Add the order to the customer orders database
         customerOrders.push(order);
+
+        // Add the same order to the driver's database
         driverOrders.push(order);
 
         alert(`Order placed for: ${selectedMeals.join(', ')}\nDelivery Location: ${deliveryLocation}\nDelivery Details: ${deliveryDetails}`);
 
-        // Reset the selected meals after the order
-        selectedMeals = [];
-        const mealItems = document.querySelectorAll('.meal-item');
-        mealItems.forEach(item => {
-            item.classList.remove('selected');  // Remove the 'selected' class from each item
-        });
-
-        // Clear the input fields
-        document.getElementById("delivery-location").value = '';
-        document.getElementById("delivery-details").value = '';
-
-        // Unselect the buttons
-        const customerButton = document.getElementById("customer-button");
-        const driverButton = document.getElementById("driver-button");
-
-        customerButton.classList.remove("selected");
-        driverButton.classList.remove("selected");
-
-        // Optionally, reset the view to the customer role
-        toggleRole('customer');
     } else {
         alert('No meals selected!');
     }
 }
 
 
-        function updateDriverPanel() {
-            const driverOrdersDiv = document.getElementById("restaurant-list");
-            driverOrdersDiv.innerHTML = driverOrders.map((order, index) => {
-                return `
-                    <div class="item">
-                        <button class="driver-order-button" onclick="selectDriverOrder(${index})">
-                            Order ${index + 1}: ${order.meals.join(", ")}
-                        </button>
-                    </div>
-                `;
-            }).join('');
-        }
 
-        function selectDriverOrder(index) {
-            selectedDriverOrder = driverOrders[index];
-            updateDriverPanel();
-            alert(`Order selected! You can now deliver: ${selectedDriverOrder.meals.join(", ")}`);
-        }
+function updateDriverPanel() {
+    const driverOrdersDiv = document.getElementById("restaurant-list"); // Use this div for driver orders in the item list
+    driverOrdersDiv.innerHTML = driverOrders.map((order, index) => {
+        return `
+            <div class="item" onclick="selectDriverOrder(${index})">
+                Order ${index + 1}: ${order.meals.join(", ")}  
+            </div>
+        `;
+    }).join('');
+}
+
+function selectDriverOrder(index) {
+    // Mark the selected order and update the panel
+    selectedDriverOrder = driverOrders[index];
+
+    // Display the selected order's detailed information
+    const infoPanel = document.getElementById("driver-order-info");
+    infoPanel.innerHTML = `
+        <h4>Order ${index + 1} Details:</h4>
+        <div><strong>Restaurant:</strong> ${selectedDriverOrder.restaurant}</div>  <!-- Display restaurant name -->
+        <div><strong>Meals:</strong> ${selectedDriverOrder.meals.join(", ")}</div>
+        <div><strong>Delivery Location:</strong> ${selectedDriverOrder.location}</div>
+        <div><strong>Additional Details:</strong> ${selectedDriverOrder.details || "No additional details"}</div>
+    `;
+}
+
 
         window.onload = initMap;
     </script>
